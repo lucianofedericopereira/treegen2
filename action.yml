@@ -4,7 +4,7 @@ author: "Luciano Federico Pereira"
 
 branding:
   icon: "folder"
-  color: "blue"
+  color: "green"
 
 inputs:
   readme:
