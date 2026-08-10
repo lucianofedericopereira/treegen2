@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+document.documentElement.classList.add('js');
+/* FOUC guard fallback: assets/site.js (loaded at the end of body) reveals
+   the page almost immediately once it runs — this inline copy is just a
+   safety net so a blocked/failed-to-load external script can't leave the
+   whole page permanently hidden. document.body doesn't exist yet at this
+   point (still parsing <head>), but by the time this callback actually
+   fires later, it will. */
+setTimeout(function () { document.body && document.body.classList.add('loaded'); }, 1500);
+/* Sets the real <html lang> before <body> ever paints, so a returning
+   visitor with a stored non-English locale (assets/locale.js's own
+   applyStoredLocale does the same lookup, later) doesn't see a flash of
+   English content immediately swapped for their actual language once JS
+   runs — the :lang() CSS in locale.css already reacts to this attribute
+   the instant it's set, no later JS pass required for the static content.
+   Duplicated literal key ('treegen2-locale') rather than shared with
+   locale.js's STORAGE_KEY constant — this runs before that file is even
+   requested, and the project has no build step to source one from the
+   other. Only sets the attribute; the rest of setLocale()'s work
+   (persisting again, announcing, engaging Google Translate) still
+   happens the normal way once locale.js itself runs. */
+try {
+  var storedLocale = localStorage.getItem('treegen2-locale');
+  if (storedLocale && storedLocale !== 'en') document.documentElement.lang = storedLocale;
+} catch (e) {}
+</script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>treegen2 — File Tree README Action</title>
+<meta name="author" content="Luciano Federico Pereira" />
+<meta name="description" content="A GitHub Action that turns a [[files]] marker into a directory tree — ASCII, a themeable SVG with folder icons, or a collapsible details tree." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="treegen2 — File Tree README Action" />
+<meta property="og:description" content="A GitHub Action that turns a [[files]] marker into a directory tree — and keeps it in sync on every push." />
+<meta name="twitter:card" content="summary" />
+<meta name="theme-color" content="#faf8f1" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#14170f" media="(prefers-color-scheme: dark)" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B3%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="assets/site.css" />
+<!-- Alternate palettes (ported from fui) — inert by default. Add
+     data-palette="name" to <html> above to pick one; see the file header
+     for the full list and how each is derived. -->
+<link rel="stylesheet" href="assets/palettes.css" />
+<link rel="stylesheet" href="assets/locale.css" />
+<!-- Cheap even if translate is never engaged — actual script load is lazy,
+     see assets/locale.js. -->
+<link rel="preconnect" crossorigin="anonymous" href="https://translate.google.com">
+<link rel="preconnect" crossorigin="anonymous" href="https://translate.googleapis.com">
+<link rel="dns-prefetch" href="https://translate.google.com">
+<link rel="dns-prefetch" href="https://translate.googleapis.com">
+</head>
+<body>
+
+<!-- Tree glyph, defined once and reused via <use> everywhere below (nav,
+     hero, footer). Extracted as a real vector outline (fontTools, from the
+     system's monochrome Symbola fallback font, the same one rendering the
+     🌳 emoji when no color-emoji font is installed) instead of the emoji
+     character itself, so it renders identically on any device regardless
+     of what emoji font (or lack of one) that device has. -->
+<svg style="position:absolute; width:0; height:0; overflow:hidden" aria-hidden="true">
+  <symbol id="icon-tree" viewBox="39 -1409 1165 1662">
+    <path transform="scale(1,-1)" d="M1161 438Q1161 328 1093 250Q1022 168 914 168Q834 168 697 228Q685 -99 685 -80Q685 -157 736 -187V-210H568L589 196Q589 205 586 228Q431 124 339 124Q214 124 145 207Q82 284 82 412Q82 461 145.0 533.5Q208 606 208 609Q208 613 183 654Q143 720 143 800Q143 898 312 972Q290 995 290 1072Q290 1202 406 1288Q513 1366 647 1366Q756 1366 840 1321Q935 1269 967 1174Q987 1114 987 1086Q987 1036 949 972Q989 938 1028 904Q1074 859 1074 816Q1074 752 992 672Q1161 610 1161 438ZM1047 448Q1047 493 987.0 566.5Q927 640 927 674Q927 693 949.0 740.0Q971 787 971 805Q971 845 927.5 890.5Q884 936 884 979Q884 1001 894.5 1042.0Q905 1083 905 1105Q905 1159 867.0 1216.5Q829 1274 779 1293Q758 1301 723 1301Q704 1301 669.5 1292.5Q635 1284 617 1284Q606 1284 599 1298Q583 1301 565 1301Q479 1301 417.0 1231.5Q355 1162 355 1075Q355 1057 370.5 1027.0Q386 997 401 987Q421 974 421 969Q421 939 385 926Q357 926 303 917Q263 905 235.5 869.5Q208 834 208 792Q208 746 246.5 691.5Q285 637 285 639Q285 625 241 580Q192 530 185 515Q148 438 148 402Q148 332 200.0 282.5Q252 233 323 233Q407 233 510.5 304.0Q614 375 614 375Q628 375 723.5 326.0Q819 277 878 277Q934 277 990.5 334.5Q1047 392 1047 448Z"/>
+  </symbol>
+  <!-- Classic "external link" arrow (Feather/Lucide-style) — hand-drawn
+       stroke shape, same visual language as .ic-svg's feature icons,
+       instead of the Unicode "↗" character whose exact weight/angle/
+       proportions vary by whatever font renders it on a given device. -->
+  <symbol id="icon-external" viewBox="0 0 24 24">
+    <path d="M7 17 17 7" />
+    <path d="M8 7h9v9" />
+  </symbol>
+  <!-- Magnifying glass for the search/jump-to trigger — same hand-drawn
+       stroke language (round caps, two simple paths) as icon-external. -->
+  <symbol id="icon-search" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20 16 16" />
+  </symbol>
+  <!-- Chevron for the back-to-top button — same construction as the
+       carousel's left/right arrows (.carousel-btn svg), just pointing up. -->
+  <symbol id="icon-chevron-up" viewBox="0 0 24 24">
+    <path d="M5 15 12 8 19 15" />
+  </symbol>
+  <symbol id="flag-bg" viewBox="0 0 640 480">
+<path fill="#fff" d="M0 0h640v160H0z"/>
+  <path fill="#00966e" d="M0 160h640v160H0z"/>
+  <path fill="#d62612" d="M0 320h640v160H0z"/>
+  </symbol>
+  <symbol id="flag-cn" viewBox="0 0 640 480">
+<defs>
+    <path id="cn-a" fill="#ff0" d="M-.6.8 0-1 .6.8-1-.3h2z"/>
+  </defs>
+  <path fill="#ee1c25" d="M0 0h640v480H0z"/>
+  <use href="#cn-a" width="30" height="20" transform="matrix(71.9991 0 0 72 120 120)"/>
+  <use href="#cn-a" width="30" height="20" transform="rotate(239.07 133.748 -44.074)scale(23.99992 23.99978)"/>
+  <use href="#cn-a" width="30" height="20" transform="rotate(-98.11 185.558 -77.035)scale(24 23.9997)"/>
+  <use href="#cn-a" width="30" height="20" transform="matrix(6.5991 -23.0749 23.0746 6.59919 288 168)"/>
+  <use href="#cn-a" width="30" height="20" transform="matrix(14.9991 -18.73557 18.73533 14.99929 240 216)"/>
+  </symbol>
+  <symbol id="flag-cz" viewBox="0 0 640 480">
+<path fill="#fff" d="M0 0h640v240H0z"/>
+  <path fill="#d7141a" d="M0 240h640v240H0z"/>
+  <path fill="#11457e" d="M360 240 0 0v480z"/>
+  </symbol>
+  <symbol id="flag-de" viewBox="0 0 640 480">
+<path fill="#fc0" d="M0 320h640v160H0z"/>
+  <path fill="#000001" d="M0 0h640v160H0z"/>
+  <path fill="red" d="M0 160h640v160H0z"/>
+  </symbol>
+  <symbol id="flag-dk" viewBox="0 0 640 480">
+<path fill="#c8102e" d="M0 0h640.1v480H0z"/>
+  <path fill="#fff" d="M205.7 0h68.6v480h-68.6z"/>
+  <path fill="#fff" d="M0 205.7h640.1v68.6H0z"/>
+  </symbol>
+  <symbol id="flag-ee" viewBox="0 0 640 480">
+<path fill="#1791ff" d="M0 0h640v160H0z"/>
+  <path fill="#000001" d="M0 160h640v160H0z"/>
+  <path fill="#fff" d="M0 320h640v160H0z"/>
+  </symbol>
+  <symbol id="flag-es" viewBox="0 0 640 480">
+<path fill="#aa151b" d="M0 0h640v480H0z"/>
+  <path fill="#f1bf00" d="M0 120h640v240H0z"/>
+  </symbol>
+  <symbol id="flag-fi" viewBox="0 0 640 480">
+<path fill="#fff" d="M0 0h640v480H0z"/>
+  <path fill="#002f6c" d="M0 174.5h640v131H0z"/>
+  <path fill="#002f6c" d="M175.5 0h130.9v480h-131z"/>
+  </symbol>
+  <symbol id="flag-fr" viewBox="0 0 640 480">
+<path fill="#fff" d="M0 0h640v480H0z"/>
+  <path fill="#000091" d="M0 0h213.3v480H0z"/>
+  <path fill="#e1000f" d="M426.7 0H640v480H426.7z"/>
+  </symbol>
+  <symbol id="flag-gr" viewBox="0 0 640 480">
+<path fill="#0d5eaf" fill-rule="evenodd" d="M0 0h640v53.3H0z"/>
+  <path fill="#fff" fill-rule="evenodd" d="M0 53.3h640v53.4H0z"/>
+  <path fill="#0d5eaf" fill-rule="evenodd" d="M0 106.7h640V160H0z"/>
+  <path fill="#fff" fill-rule="evenodd" d="M0 160h640v53.3H0z"/>
+  <path fill="#0d5eaf" d="M0 0h266.7v266.7H0z"/>
+  <path fill="#0d5eaf" fill-rule="evenodd" d="M0 213.3h640v53.4H0z"/>
+  <path fill="#fff" fill-rule="evenodd" d="M0 266.7h640V320H0z"/>
+  <path fill="#0d5eaf" fill-rule="evenodd" d="M0 320h640v53.3H0z"/>
+  <path fill="#fff" fill-rule="evenodd" d="M0 373.3h640v53.4H0z"/>
+  <g fill="#fff" fill-rule="evenodd" stroke-width="1.3">
+    <path d="M106.7 0H160v266.7h-53.3z"/>
+    <path d="M0 106.7h266.7V160H0z"/>
+  </g>
+  <path fill="#0d5eaf" d="M0 426.7h640V480H0z"/>
+  </symbol>
+  <symbol id="flag-hr" viewBox="0 0 640 480">
+<path fill="#171796" d="M0 0h640v480H0z"/>
+  <path fill="#fff" d="M0 0h640v320H0z"/>
+  <path fill="red" d="M0 0h640v160H0z"/>
+  </symbol>
+  <symbol id="flag-hu" viewBox="0 0 640 480">
+<g fill-rule="evenodd">
+    <path fill="#fff" d="M640 480H0V0h640z"/>
+    <path fill="#388d00" d="M640 480H0V320h640z"/>
+    <path fill="#d43516" d="M640 160.1H0V.1h640z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-ie" viewBox="0 0 640 480">
+<g fill-rule="evenodd" stroke-width="1pt">
+    <path fill="#fff" d="M0 0h640v480H0z"/>
+    <path fill="#009a49" d="M0 0h213.3v480H0z"/>
+    <path fill="#ff7900" d="M426.7 0H640v480H426.7z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-it" viewBox="0 0 640 480">
+<g fill-rule="evenodd" stroke-width="1pt">
+    <path fill="#fff" d="M0 0h640v480H0z"/>
+    <path fill="#009246" d="M0 0h213.3v480H0z"/>
+    <path fill="#ce2b37" d="M426.7 0H640v480H426.7z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-lt" viewBox="0 0 640 480">
+<g fill-rule="evenodd" stroke-width="1pt" transform="scale(.64143 .96773)">
+    <rect width="1063" height="708.7" fill="#006a44" rx="0" ry="0" transform="scale(.93865 .69686)"/>
+    <rect width="1063" height="236.2" y="475.6" fill="#c1272d" rx="0" ry="0" transform="scale(.93865 .69686)"/>
+    <path fill="#fdb913" d="M0 0h997.8v164.6H0z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-lv" viewBox="0 0 640 480">
+<g fill-rule="evenodd">
+    <path fill="#fff" d="M0 0h640v480H0z"/>
+    <path fill="#981e32" d="M0 0h640v192H0zm0 288h640v192H0z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-mt" viewBox="0 0 640 480">
+<path fill="#fff" d="M0 0h320v480H0z"/>
+  <path fill="#cf142b" d="M320 0h320v480H320z"/>
+  </symbol>
+  <symbol id="flag-nl" viewBox="0 0 640 480">
+<path fill="#ae1c28" d="M0 0h640v160H0z"/>
+  <path fill="#fff" d="M0 160h640v160H0z"/>
+  <path fill="#21468b" d="M0 320h640v160H0z"/>
+  </symbol>
+  <symbol id="flag-pl" viewBox="0 0 640 480">
+<g fill-rule="evenodd">
+    <path fill="#fff" d="M640 480H0V0h640z"/>
+    <path fill="#dc143c" d="M640 480H0V240h640z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-pt" viewBox="0 0 640 480">
+<path fill="red" d="M256 0h384v480H256z"/>
+  <path fill="#060" d="M0 0h256v480H0z"/>
+  </symbol>
+  <symbol id="flag-ro" viewBox="0 0 640 480">
+<g fill-rule="evenodd" stroke-width="1pt">
+    <path fill="#00319c" d="M0 0h213.3v480H0z"/>
+    <path fill="#ffde00" d="M213.3 0h213.4v480H213.3z"/>
+    <path fill="#de2110" d="M426.7 0H640v480H426.7z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-se" viewBox="0 0 640 480">
+<path fill="#005293" d="M0 0h640v480H0z"/>
+  <path fill="#fecb00" d="M176 0v192H0v96h176v192h96V288h368v-96H272V0z"/>
+  </symbol>
+  <symbol id="flag-si" viewBox="0 0 640 480">
+<defs>
+    <clipPath id="si-a">
+      <path fill-opacity=".7" d="M-15 0h682.6v512H-15.1z"/>
+    </clipPath>
+  </defs>
+  <g fill-rule="evenodd" stroke-width="1pt" clip-path="url(#si-a)" transform="translate(14.1)scale(.9375)">
+    <path fill="#fff" d="M-62 0H962v512H-62z"/>
+    <path fill="#d50000" d="M-62 341.3H962V512H-62z"/>
+    <path fill="#0000bf" d="M-62 170.7H962v170.6H-62z"/>
+    <path fill="#d50000" d="M228.4 93c-4 61.6-6.4 95.4-15.7 111-10.2 16.8-20 29.1-59.7 44-39.6-14.9-49.4-27.2-59.6-44-9.4-15.6-11.7-49.4-15.7-111l5.8-2c11.8-3.6 20.6-6.5 27.1-7.8 9.3-2 17.3-4.2 42.3-4.7 25 .4 33 2.8 42.3 4.8q9.7 2.1 27.3 7.7z"/>
+    <path fill="#0000bf" d="M222.6 91c-3.8 61.5-7 89.7-12 103.2-9.6 23.2-24.8 35.9-57.6 48-32.8-12.1-48-24.8-57.7-48-5-13.6-8-41.7-11.8-103.3q17.4-5.6 27.1-7.7c9.3-2 17.3-4.3 42.3-4.7 25 .4 33 2.7 42.3 4.7a284 284 0 0 1 27.4 7.7z"/>
+    <path fill="#ffdf00" d="m153 109.8 1.5 3.7 7 1-4.5 2.7 4.3 2.9-6.3 1-2 3.4-2-3.5-6-.8 4-3-4.2-2.7 6.7-1z"/>
+    <path fill="#fff" d="m208.3 179.6-3.9-3-2.7-4.6-5.4-4.7-2.9-4.7-5.4-4.9-2.6-4.7-3-2.3-1.8-1.9-5 4.3-2.6 4.7-3.3 3-3.7-2.9-2.7-4.8-10.3-18.3-10.3 18.3-2.7 4.8-3.7 2.9-3.3-3-2.7-4.7-4.9-4.3-1.9 1.8-2.9 2.4-2.6 4.7-5.4 4.9-2.9 4.7-5.4 4.7-2.7 4.6-3.9 3a66 66 0 0 0 18.6 36.3 107 107 0 0 0 36.6 20.5 104 104 0 0 0 36.8-20.5c5.8-6 16.6-19.3 18.6-36.3"/>
+    <path fill="#ffdf00" d="m169.4 83.9 1.6 3.7 7 1-4.6 2.7 4.4 2.9-6.3 1-2 3.4-2-3.5-6-.8 4-3-4.2-2.7 6.6-1zm-33 0 1.6 3.7 7 .9-4.5 2.7 4.3 2.9-6.3 1-2 3.4-2-3.4-6-.9 4-3-4.2-2.7 6.7-1z"/>
+    <path fill="#0000bf" d="M199.7 203h-7.4l-7-.5-8.3-4h-9.4l-8.1 4-6.5.6-6.4-.6-8.1-4H129l-8.4 4-6.9.6-7.6-.1-3.6-6.2.1-.2 11.2 1.9 6.9-.5 8.3-4.1h9.4l8.2 4 6.4.6 6.5-.6 8.1-4h9.4l8.4 4 6.9.6 10.8-2 .2.4zm-86.4 9.5 7.4-.5 8.3-4h9.4l8.2 4 6.4.5 6.4-.5 8.2-4h9.4l8.3 4 7.5.5 4.8-6h-.1l-5.2 1.4-6.9-.5-8.3-4h-9.4l-8.2 4-6.4.6-6.5-.6-8.1-4H129l-8.4 4-6.9.6-5-1.3v.2l4.5 5.6z"/>
+  </g>
+  </symbol>
+  <symbol id="flag-sk" viewBox="0 0 640 480">
+<path fill="#ee1c25" d="M0 0h640v480H0z"/>
+  <path fill="#0b4ea2" d="M0 0h640v320H0z"/>
+  <path fill="#fff" d="M0 0h640v160H0z"/>
+  <path fill="#fff" d="M233 370.8c-43-20.7-104.6-61.9-104.6-143.2 0-81.4 4-118.4 4-118.4h201.3s3.9 37 3.9 118.4S276 350 233 370.8"/>
+  <path fill="#ee1c25" d="M233 360c-39.5-19-96-56.8-96-131.4s3.6-108.6 3.6-108.6h184.8s3.5 34 3.5 108.6C329 303.3 272.5 341 233 360"/>
+  <path fill="#fff" d="M241.4 209c10.7.2 31.6.6 50.1-5.6 0 0-.4 6.7-.4 14.4s.5 14.4.5 14.4c-17-5.7-38.1-5.8-50.2-5.7v41.2h-16.8v-41.2c-12-.1-33.1 0-50.1 5.7 0 0 .5-6.7.5-14.4s-.5-14.4-.5-14.4c18.5 6.2 39.4 5.8 50 5.6v-25.9c-9.7 0-23.7.4-39.6 5.7 0 0 .5-6.6.5-14.4 0-7.7-.5-14.4-.5-14.4 15.9 5.3 29.9 5.8 39.6 5.7-.5-16.4-5.3-37-5.3-37s9.9.7 13.8.7 13.8-.7 13.8-.7-4.8 20.6-5.3 37c9.7.1 23.7-.4 39.6-5.7 0 0-.5 6.7-.5 14.4s.5 14.4.5 14.4a119 119 0 0 0-39.7-5.7v26z"/>
+  <path fill="#0b4ea2" d="M233 263.3c-19.9 0-30.5 27.5-30.5 27.5s-6-13-22.2-13c-11 0-19 9.7-24.2 18.8 20 31.7 51.9 51.3 76.9 63.4 25-12 57-31.7 76.9-63.4-5.2-9-13.2-18.8-24.2-18.8-16.2 0-22.2 13-22.2 13S253 263.3 233 263.3"/>
+  </symbol>
+  <symbol id="flag-us" viewBox="0 0 640 480">
+<path fill="#bd3d44" d="M0 0h640v480H0"/>
+  <path stroke="#fff" stroke-width="37" d="M0 55.3h640M0 129h640M0 203h640M0 277h640M0 351h640M0 425h640"/>
+  <path fill="#192f5d" d="M0 0h364.8v258.5H0"/>
+  <marker id="us-a" markerHeight="30" markerWidth="30">
+    <path fill="#fff" d="m14 0 9 27L0 10h28L5 27z"/>
+  </marker>
+  <path fill="none" marker-mid="url(#us-a)" d="m0 0 16 11h61 61 61 61 60L47 37h61 61 60 61L16 63h61 61 61 61 60L47 89h61 61 60 61L16 115h61 61 61 61 60L47 141h61 61 60 61L16 166h61 61 61 61 60L47 192h61 61 60 61L16 218h61 61 61 61 60z"/>
+  </symbol>
+  <symbol id="icon-globe" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M2 12h20"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+  </symbol>
+</svg>
+
+<!-- Populated from JS on window "beforeprint" (see site.js) — invisible on
+     screen (.print-only), shown only in the printed output. -->
+<div class="print-only" id="print-meta" aria-hidden="true">
+  <strong id="print-meta-title"></strong>
+  <span id="print-meta-url"></span>
+  <span id="print-meta-date"></span>
+</div>
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<div class="shell">
+
+<nav class="nav" aria-label="Primary">
+  <div class="wrap">
+    <a class="brand notranslate" href="#top"><span class="logo"><svg class="logo-tree" aria-hidden="true"><use href="#icon-tree"/></svg></span> treegen2</a>
+    <div class="links" id="nav-links">
+      <a class="link i18n" href="#compare"><span data-i18n-default>Why</span><span data-locale="es" class="notranslate">Por qué</span><span data-locale="it" class="notranslate">Perché</span></a>
+      <a class="link i18n" href="#demo"><span data-i18n-default>Live demo</span><span data-locale="es" class="notranslate">Demo en vivo</span><span data-locale="it" class="notranslate">Demo dal vivo</span></a>
+      <a class="link i18n" href="#variants"><span data-i18n-default>Styles</span><span data-locale="es" class="notranslate">Estilos</span><span data-locale="it" class="notranslate">Stili</span></a>
+      <a class="link i18n" href="#use-cases"><span data-i18n-default>Use cases</span><span data-locale="es" class="notranslate">Casos de uso</span><span data-locale="it" class="notranslate">Casi d'uso</span></a>
+      <a class="link i18n" href="#how"><span data-i18n-default>How it works</span><span data-locale="es" class="notranslate">Cómo funciona</span><span data-locale="it" class="notranslate">Come funziona</span></a>
+      <a class="link i18n" href="#quick-start"><span data-i18n-default>Quick start</span><span data-locale="es" class="notranslate">Inicio rápido</span><span data-locale="it" class="notranslate">Avvio rapido</span></a>
+      <a class="link i18n" href="#options"><span data-i18n-default>Options</span><span data-locale="es" class="notranslate">Opciones</span><span data-locale="it" class="notranslate">Opzioni</span></a>
+      <a class="link i18n" href="#features"><span data-i18n-default>Features</span><span data-locale="es" class="notranslate">Funciones</span><span data-locale="it" class="notranslate">Funzionalità</span></a>
+      <a class="link" href="#faq">FAQ</a>
+      <div class="links-external">
+        <a class="link link--external i18n" href="docs.html"><span data-i18n-default>Docs</span><span data-locale="es" class="notranslate">Documentación</span><span data-locale="it" class="notranslate">Documentazione</span><svg class="link-external-icon" aria-hidden="true"><use href="#icon-external"/></svg></a>
+        <a class="link link--external i18n" href="changelog.html"><span data-i18n-default>Changelog</span><span data-locale="es" class="notranslate">Cambios</span><span data-locale="it" class="notranslate">Modifiche</span><svg class="link-external-icon" aria-hidden="true"><use href="#icon-external"/></svg></a>
+        <a class="link link--external notranslate" href="https://github.com/lucianofedericopereira/treegen2" target="_blank" rel="noopener">GitHub<svg class="link-external-icon" aria-hidden="true"><use href="#icon-external"/></svg></a>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <!-- Duplicate of .links-external above, not a reference to it: the
+         original lives inside #nav-links so it's still reachable inside
+         the hamburger dropdown once that collapses. This copy is hidden
+         by default and only shown by .nav.is-compact (assets/locale.js's
+         checkNavOverflow) when the in-page links don't fit but these two
+         external links + search + switcher + hamburger still do — so a
+         translated language that only pushes the *link row* into
+         overflow doesn't also have to hide Changelog/GitHub, which fit
+         fine on their own. -->
+    <div class="links-external-toolbar" id="nav-links-external-toolbar">
+      <a class="link link--external i18n" href="changelog.html"><span data-i18n-default>Changelog</span><span data-locale="es" class="notranslate">Cambios</span><span data-locale="it" class="notranslate">Modifiche</span><svg class="link-external-icon" aria-hidden="true"><use href="#icon-external"/></svg></a>
+      <a class="link link--external notranslate" href="https://github.com/lucianofedericopereira/treegen2" target="_blank" rel="noopener">GitHub<svg class="link-external-icon" aria-hidden="true"><use href="#icon-external"/></svg></a>
+    </div>
+    <button type="button" class="search-trigger" id="search-trigger" aria-haspopup="dialog" aria-label="Search or jump to&hellip;">
+      <svg class="search-trigger-icon" aria-hidden="true"><use href="#icon-search"/></svg>
+      <span class="search-trigger-label">Search</span>
+      <kbd class="search-kbd">S</kbd>
+    </button>
+    <div class="locale-switcher notranslate" id="locale-switcher">
+      <button type="button" class="locale-trigger" id="locale-trigger"
+              aria-haspopup="true" aria-expanded="false" aria-controls="locale-menu"
+              aria-label="Choose language">
+        <svg class="locale-trigger-icon" aria-hidden="true"><use href="#icon-globe"/></svg>
+      </button>
+      <ul class="locale-menu" id="locale-menu" role="menu" aria-hidden="true" aria-label="Choose language"></ul>
+      <span class="locale-announce" id="locale-announce" role="status" aria-live="polite"></span>
+    </div>
+    <div id="translate" class="notranslate" hidden></div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Toggle menu">
+      <span class="nav-toggle-bar"></span>
+      <span class="nav-toggle-bar"></span>
+      <span class="nav-toggle-bar"></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Search or jump to: harvests this page's own h1/h2 (all of which sit
+     inside an ancestor with a real id — header#top, section#compare, etc.)
+     and jumps straight to that ancestor's id, reusing the scroll-margin-top
+     already set on `section` for the sticky nav instead of assigning each
+     heading a fresh one. Single-page scope on purpose — see
+     future-features.md's "Search widget (lunr.js)" entry for why a real
+     indexed/full-text search was deferred as overkill here; this needs no
+     index, no dependency, nothing to keep in sync. -->
+<dialog class="search-modal" id="search-modal" aria-label="Search or jump to">
+  <div class="search-input-wrap">
+    <svg aria-hidden="true"><use href="#icon-search"/></svg>
+    <input type="search" id="search-input" placeholder="Search or jump to&hellip;" autocomplete="off" aria-controls="search-results" aria-expanded="false" role="combobox" />
+  </div>
+  <ul class="search-results" id="search-results" role="listbox"></ul>
+</dialog>
+
+<main id="main-content">
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <div class="logo"><svg class="logo-tree" aria-hidden="true"><use href="#icon-tree"/></svg></div>
+        <h1 class="notranslate">treegen2</h1>
+        <p class="tagline i18n">
+          <span data-i18n-default>A GitHub Action that turns a <code class="inline">[[files]]</code> marker in your
+          README into a directory tree — and keeps it in sync on every push.</span>
+          <span data-locale="es" class="notranslate">Una GitHub Action que convierte un marcador <code class="inline">[[files]]</code> en tu
+          README en un árbol de directorios — y lo mantiene sincronizado en cada push.</span>
+          <span data-locale="it" class="notranslate">Una GitHub Action che trasforma un marcatore <code class="inline">[[files]]</code> nel tuo
+          README in un albero di directory — mantenendolo sincronizzato a ogni push.</span>
+        </p>
+        <div class="badges notranslate">
+          <span class="badge">Perl · core only</span>
+          <span class="badge">no setup step</span>
+          <span class="badge">zero runtime deps</span>
+          <span class="badge">MIT</span>
+        </div>
+        <div class="cta">
+          <a class="btn btn--primary i18n" href="https://github.com/lucianofedericopereira/treegen2">
+            <span data-i18n-default>Star on GitHub</span><span data-locale="es" class="notranslate">Danos una estrella en GitHub</span><span data-locale="it" class="notranslate">Metti una stella su GitHub</span>
+          </a>
+          <a class="btn btn--ghost no-print i18n" href="#demo"><span data-i18n-default>Watch it run</span><span data-locale="es" class="notranslate">Ver cómo funciona</span><span data-locale="it" class="notranslate">Guardalo in azione</span></a>
+          <a class="btn btn--ghost i18n" href="#quick-start"><span data-i18n-default>Quick start</span><span data-locale="es" class="notranslate">Inicio rápido</span><span data-locale="it" class="notranslate">Avvio rapido</span></a>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <svg class="hero-tree" viewBox="0 0 90 180" role="img" aria-label="Animated diagram of a directory tree growing from a root node into branches and files">
+          <path class="branch" d="M10 25.5 V145" />
+          <path class="branch" d="M10 55 H40" />
+          <path class="branch" d="M10 100 H40" />
+          <path class="branch" d="M10 145 H40" />
+          <path class="branch" d="M45 55 V38 H75" />
+          <path class="branch" d="M45 55 V72 H75" />
+          <path class="branch" d="M45 100 H75" />
+          <path class="branch" d="M45 145 V128 H75" />
+          <path class="branch" d="M45 145 V162 H75" />
+
+          <circle class="node folder" cx="10" cy="20" r="5.5" />
+          <circle class="node folder" cx="40" cy="55" r="5" />
+          <circle class="node folder" cx="40" cy="100" r="5" />
+          <circle class="node folder" cx="40" cy="145" r="5" />
+          <circle class="node file" cx="75" cy="38" r="3" />
+          <circle class="node file" cx="75" cy="72" r="3" />
+          <circle class="node file" cx="75" cy="100" r="3" />
+          <circle class="node file" cx="75" cy="128" r="3" />
+          <circle class="node file" cx="75" cy="162" r="3" />
+        </svg>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="compare">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>The problem</span><span data-locale="es" class="notranslate">El problema</span><span data-locale="it" class="notranslate">Il problema</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>Stop hand-editing your file tree</span><span data-locale="es" class="notranslate">Deja de editar tu árbol de archivos a mano</span><span data-locale="it" class="notranslate">Smetti di modificare a mano il tuo albero dei file</span></h2>
+    <p class="section-lead reveal i18n">
+      <span data-i18n-default>A directory tree in a README goes stale the moment someone adds a folder.
+      treegen2 keeps one marker current, forever.</span>
+      <span data-locale="es" class="notranslate">Un árbol de directorios en un README queda desactualizado en cuanto alguien agrega una carpeta.
+      treegen2 mantiene un marcador siempre actualizado.</span>
+      <span data-locale="it" class="notranslate">Un albero di directory in un README diventa obsoleto non appena qualcuno aggiunge una cartella.
+      treegen2 mantiene un marcatore sempre aggiornato.</span>
+    </p>
+    <div class="table-scroll reveal">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="i18n"><span data-i18n-default>Manually</span><span data-locale="es" class="notranslate">Manualmente</span><span data-locale="it" class="notranslate">Manualmente</span></th>
+            <th class="col-highlight"><span class="col-head"><span class="notranslate">treegen2</span><span class="pill i18n"><span data-i18n-default>recommended</span><span data-locale="es" class="notranslate">recomendado</span><span data-locale="it" class="notranslate">consigliato</span></span></span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="i18n"><span data-i18n-default>Tree stays in sync on every push</span><span data-locale="es" class="notranslate">El árbol se mantiene sincronizado en cada push</span><span data-locale="it" class="notranslate">L'albero resta sincronizzato a ogni push</span></td><td class="compare-no" data-label="Manually">✕</td><td class="col-highlight compare-yes" data-label="treegen2">✓</td></tr>
+          <tr><td class="i18n"><span data-i18n-default>No hand-retyping after restructures</span><span data-locale="es" class="notranslate">Sin reescritura manual tras reestructuraciones</span><span data-locale="it" class="notranslate">Niente riscrittura manuale dopo le ristrutturazioni</span></td><td class="compare-no" data-label="Manually">✕</td><td class="col-highlight compare-yes" data-label="treegen2">✓</td></tr>
+          <tr><td class="i18n"><span data-i18n-default>Consistent alignment, no copy-paste drift</span><span data-locale="es" class="notranslate">Alineación consistente, sin desvíos de copiar y pegar</span><span data-locale="it" class="notranslate">Allineamento coerente, senza derive da copia-incolla</span></td><td class="compare-no" data-label="Manually">✕</td><td class="col-highlight compare-yes" data-label="treegen2">✓</td></tr>
+          <tr><td class="i18n"><span data-i18n-default>Theme-aware light &amp; dark output</span><span data-locale="es" class="notranslate">Salida clara y oscura según el tema</span><span data-locale="it" class="notranslate">Output chiaro e scuro in base al tema</span></td><td class="compare-no" data-label="Manually">✕</td><td class="col-highlight compare-yes" data-label="treegen2">✓</td></tr>
+          <tr><td class="i18n"><span data-i18n-default><code class="inline">check</code> mode fails CI when docs go stale</span><span data-locale="es" class="notranslate">El modo <code class="inline">check</code> falla en CI cuando la documentación queda desactualizada</span><span data-locale="it" class="notranslate">La modalità <code class="inline">check</code> fa fallire la CI quando la documentazione diventa obsoleta</span></td><td class="compare-no" data-label="Manually">✕</td><td class="col-highlight compare-yes" data-label="treegen2">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>Live demo</span><span data-locale="es" class="notranslate">Demo en vivo</span><span data-locale="it" class="notranslate">Demo dal vivo</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>Watch the marker become a tree</span><span data-locale="es" class="notranslate">Mira cómo el marcador se convierte en un árbol</span><span data-locale="it" class="notranslate">Guarda il marcatore trasformarsi in un albero</span></h2>
+    <p class="section-lead reveal i18n">
+      <span data-i18n-default>This is the actual splice-and-commit loop, animated — scroll it into view once, then hit replay as often as you like.</span>
+      <span data-locale="es" class="notranslate">Este es el ciclo real de empalme y commit, animado — desplázate hasta que aparezca una vez y luego presiona repetir tantas veces como quieras.</span>
+      <span data-locale="it" class="notranslate">Questo è il vero ciclo di splice e commit, animato — scorri fino a farlo comparire una volta, poi premi replay tutte le volte che vuoi.</span>
+    </p>
+
+    <div class="demo-card reveal" id="demo-card">
+      <svg class="border-draw" aria-hidden="true" focusable="false">
+        <rect class="border-draw-rect" rx="11" ry="11" pathLength="1" />
+      </svg>
+      <div class="demo-chrome">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="demo-filename notranslate">README.md</span>
+        <button type="button" class="replay-btn i18n" id="demo-replay"><span data-i18n-default>↻ Replay</span><span data-locale="es" class="notranslate">↻ Repetir</span><span data-locale="it" class="notranslate">↻ Riproduci</span></button>
+      </div>
+      <div class="demo-body">
+        <pre class="demo-pre"><code>## Project structure
+
+<span id="demo-marker">[[files]]</span><span class="demo-cursor" aria-hidden="true"></span></code></pre>
+        <div class="demo-tree" id="demo-tree" aria-live="polite">
+          <span class="line show"><span class="ft-branch">├── </span><span class="ft-dir">brand-identity</span>/</span>
+          <span class="line show"><span class="ft-branch">│   ├── </span><span class="ft-dir">banners</span>/</span>
+          <span class="line show"><span class="ft-branch">│   ├── </span><span class="ft-dir">guidelines</span>/</span>
+          <span class="line show"><span class="ft-branch">│   └── </span><span class="ft-dir">logos</span>/</span>
+          <span class="line show"><span class="ft-branch">└── </span><span class="ft-dir">media-center</span>/</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="variants">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>One marker, three looks</span><span data-locale="es" class="notranslate">Un marcador, tres estilos</span><span data-locale="it" class="notranslate">Un marcatore, tre stili</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>Pick your style</span><span data-locale="es" class="notranslate">Elige tu estilo</span><span data-locale="it" class="notranslate">Scegli il tuo stile</span></h2>
+    <p class="section-lead reveal i18n">
+      <span data-i18n-default>Every tree below is generated by the action from the same
+      <a href="https://github.com/lucianofedericopereira/treegen2/tree/main/examples/brand"><code class="inline">examples/brand</code></a>
+      folder — including this page. Set a default in your workflow, or override
+      per-marker with <code class="inline">style="…"</code>.</span>
+      <span data-locale="es" class="notranslate">Cada árbol de abajo es generado por la action desde la misma carpeta
+      <a href="https://github.com/lucianofedericopereira/treegen2/tree/main/examples/brand"><code class="inline">examples/brand</code></a>
+      — incluyendo esta página. Define un valor predeterminado en tu workflow, o anúlalo
+      por marcador con <code class="inline">style="…"</code>.</span>
+      <span data-locale="it" class="notranslate">Ogni albero qui sotto è generato dall'action a partire dalla stessa cartella
+      <a href="https://github.com/lucianofedericopereira/treegen2/tree/main/examples/brand"><code class="inline">examples/brand</code></a>
+      — inclusa questa pagina. Imposta un valore predefinito nel tuo workflow, oppure
+      sovrascrivilo per singolo marcatore con <code class="inline">style="…"</code>.</span>
+    </p>
+
+    <!-- ASCII -->
+    <div class="variant reveal">
+      <div class="head">
+        <span class="name notranslate">ascii</span>
+        <span class="desc i18n"><span data-i18n-default>Classic <code class="inline">tree</code> block, with aligned descriptions</span><span data-locale="es" class="notranslate">Bloque <code class="inline">tree</code> clásico, con descripciones alineadas</span><span data-locale="it" class="notranslate">Blocco <code class="inline">tree</code> classico, con descrizioni allineate</span></span>
+      </div>
+      <div class="body">
+<!-- filetree:start dir="examples/brand" descriptions="examples/brand/.filetree.json" dirs-only="true" -->
+<pre class="filetree-ascii"><span class="ft-branch">├── </span><span class="ft-dir">brand-identity</span><span class="ft-slash">/</span>      <span class="ft-comment"># Core visual brand elements</span>
+<span class="ft-branch">│   ├── </span><span class="ft-dir">banners</span><span class="ft-slash">/</span>         <span class="ft-comment"># Social media headers and banners</span>
+<span class="ft-branch">│   ├── </span><span class="ft-dir">guidelines</span><span class="ft-slash">/</span>      <span class="ft-comment"># Style guides, color codes, and usage manuals</span>
+<span class="ft-branch">│   ├── </span><span class="ft-dir">logos</span><span class="ft-slash">/</span>           <span class="ft-comment"># Official logos and icons (SVG, PNG)</span>
+<span class="ft-branch">│   └── </span><span class="ft-dir">typography</span><span class="ft-slash">/</span>      <span class="ft-comment"># Official brand fonts</span>
+<span class="ft-branch">├── </span><span class="ft-dir">design-resources</span><span class="ft-slash">/</span>    <span class="ft-comment"># UI kits, components, and design source files (Figma, etc.)</span>
+<span class="ft-branch">└── </span><span class="ft-dir">media-center</span><span class="ft-slash">/</span>        <span class="ft-comment"># Public relations and media archive</span>
+<span class="ft-branch">    ├── </span><span class="ft-dir">clippings</span><span class="ft-slash">/</span>       <span class="ft-comment"># External news coverage, video clips, and press mentions</span>
+<span class="ft-branch">    ├── </span><span class="ft-dir">press-kit</span><span class="ft-slash">/</span>       <span class="ft-comment"># Corporate backgrounder, management bios, and fact sheets</span>
+<span class="ft-branch">    └── </span><span class="ft-dir">press-releases</span><span class="ft-slash">/</span>  <span class="ft-comment"># Historical archive of official press releases</span></pre>
+<!-- filetree:end -->
+      </div>
+    </div>
+
+    <!-- SVG -->
+    <div class="variant reveal">
+      <div class="head">
+        <span class="name notranslate">svg</span>
+        <span class="desc i18n"><span data-i18n-default>Folder icons · pick a colour · light &amp; dark · responsive</span><span data-locale="es" class="notranslate">Iconos de carpeta · elige un color · claro y oscuro · responsivo</span><span data-locale="it" class="notranslate">Icone delle cartelle · scegli un colore · chiaro e scuro · responsive</span></span>
+      </div>
+      <div class="body">
+<!-- filetree:start dir="examples/brand" descriptions="examples/brand/.filetree.json" dirs-only="true" style="svg" color="green" background="transparent" svg-output="assets/example-tree-green.svg" title="Brand assets" -->
+<img class="filetree-svg" src="assets/example-tree-green.svg" alt="Brand assets" />
+<!-- filetree:end -->
+      </div>
+    </div>
+
+    <!-- COLLAPSIBLE -->
+    <div class="variant reveal">
+      <div class="head">
+        <span class="name notranslate">collapsible</span>
+        <span class="desc i18n"><span data-i18n-default>GitHub-native <code class="inline">&lt;details&gt;</code> — click a folder to expand/collapse</span><span data-locale="es" class="notranslate">Elemento <code class="inline">&lt;details&gt;</code> nativo de GitHub — haz clic en una carpeta para expandir o contraer</span><span data-locale="it" class="notranslate">Elemento <code class="inline">&lt;details&gt;</code> nativo di GitHub — clicca su una cartella per espandere o comprimere</span></span>
+      </div>
+      <div class="body">
+        <div class="tree-details notranslate">
+<!-- filetree:start dir="examples/brand" descriptions="examples/brand/.filetree.json" exclude=".filetree.json" style="collapsible" -->
+<details open>
+<summary><span class="ft-name">📁 <strong>brand-identity</strong></span> <em class="ft-note">Core visual brand elements</em></summary>
+  <details open>
+  <summary><span class="ft-name">📁 <strong>banners</strong></span> <em class="ft-note">Social media headers and banners</em></summary>
+    <ul>
+      <li><span class="ft-name">📄 twitter-header.png</span></li>
+    </ul>
+  </details>
+  <details open>
+  <summary><span class="ft-name">📁 <strong>guidelines</strong></span> <em class="ft-note">Style guides, color codes, and usage manuals</em></summary>
+    <ul>
+      <li><span class="ft-name">📄 brand-guide.pdf</span></li>
+    </ul>
+  </details>
+  <details open>
+  <summary><span class="ft-name">📁 <strong>logos</strong></span> <em class="ft-note">Official logos and icons (SVG, PNG)</em></summary>
+    <ul>
+      <li><span class="ft-name">📄 favicon.png</span></li>
+      <li><span class="ft-name">📄 logo-mono.svg</span></li>
+      <li><span class="ft-name">📄 logo-primary.svg</span></li>
+    </ul>
+  </details>
+  <details open>
+  <summary><span class="ft-name">📁 <strong>typography</strong></span> <em class="ft-note">Official brand fonts</em></summary>
+    <ul>
+      <li><span class="ft-name">📄 Inter-Bold.ttf</span></li>
+      <li><span class="ft-name">📄 Inter.ttf</span></li>
+    </ul>
+  </details>
+</details>
+<details open>
+<summary><span class="ft-name">📁 <strong>design-resources</strong></span> <em class="ft-note">UI kits, components, and design source files (Figma, etc.)</em></summary>
+  <ul>
+    <li><span class="ft-name">📄 components.fig</span></li>
+    <li><span class="ft-name">📄 ui-kit.fig</span></li>
+  </ul>
+</details>
+<details open>
+<summary><span class="ft-name">📁 <strong>media-center</strong></span> <em class="ft-note">Public relations and media archive</em></summary>
+  <details open>
+  <summary><span class="ft-name">📁 <strong>clippings</strong></span> <em class="ft-note">External news coverage, video clips, and press mentions</em></summary>
+    <ul>
+      <li><span class="ft-name">📄 techcrunch-feature.md</span></li>
+    </ul>
+  </details>
+  <details open>
+  <summary><span class="ft-name">📁 <strong>press-kit</strong></span> <em class="ft-note">Corporate backgrounder, management bios, and fact sheets</em></summary>
+    <ul>
+      <li><span class="ft-name">📄 company-backgrounder.pdf</span></li>
+    </ul>
+  </details>
+  <details open>
+  <summary><span class="ft-name">📁 <strong>press-releases</strong></span> <em class="ft-note">Historical archive of official press releases</em></summary>
+    <ul>
+      <li><span class="ft-name">📄 2025-01-product-launch.md</span></li>
+      <li><span class="ft-name">📄 2025-06-series-a.md</span></li>
+    </ul>
+  </details>
+</details>
+<!-- filetree:end -->
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="use-cases">
+  <div class="wrap wrap-wide">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>Where it fits</span><span data-locale="es" class="notranslate">Dónde encaja</span><span data-locale="it" class="notranslate">Dove si adatta</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>Any repo with a folder worth explaining</span><span data-locale="es" class="notranslate">Cualquier repo con una carpeta que valga la pena explicar</span><span data-locale="it" class="notranslate">Qualsiasi repo con una cartella che vale la pena spiegare</span></h2>
+    <p class="section-lead reveal i18n"><span data-i18n-default>Drag or scroll sideways — each card is the same one <code class="inline">[[files]]</code> marker, pointed at a different kind of repo.</span><span data-locale="es" class="notranslate">Arrastra o desplázate lateralmente — cada tarjeta usa el mismo marcador <code class="inline">[[files]]</code>, apuntando a un tipo distinto de repo.</span><span data-locale="it" class="notranslate">Trascina o scorri lateralmente — ogni scheda usa lo stesso marcatore <code class="inline">[[files]]</code>, puntato su un tipo diverso di repo.</span></p>
+
+    <div class="carousel-viewport reveal">
+      <div class="carousel" id="use-case-carousel" role="region" aria-label="Use cases, scrollable" tabindex="0">
+        <div class="carousel-card">
+          <div class="cc-eyebrow i18n"><span data-i18n-default>Open source libraries</span><span data-locale="es" class="notranslate">Bibliotecas de código abierto</span><span data-locale="it" class="notranslate">Librerie open source</span></div>
+          <p class="i18n"><span data-i18n-default>Keep new contributors oriented as the repo grows, without a docs PR every sprint.</span><span data-locale="es" class="notranslate">Mantén orientados a los nuevos colaboradores a medida que el repo crece, sin necesitar un PR de documentación cada sprint.</span><span data-locale="it" class="notranslate">Mantieni orientati i nuovi collaboratori man mano che il repo cresce, senza una PR di documentazione ogni sprint.</span></p>
+        </div>
+        <div class="carousel-card">
+          <div class="cc-eyebrow i18n"><span data-i18n-default>Design systems</span><span data-locale="es" class="notranslate">Sistemas de diseño</span><span data-locale="it" class="notranslate">Design system</span></div>
+          <p class="i18n"><span data-i18n-default>Show the token and component layout at a glance right in the UI kit's README.</span><span data-locale="es" class="notranslate">Muestra la disposición de tokens y componentes de un vistazo, directo en el README del kit de UI.</span><span data-locale="it" class="notranslate">Mostra la disposizione di token e componenti a colpo d'occhio, direttamente nel README del kit UI.</span></p>
+        </div>
+        <div class="carousel-card">
+          <div class="cc-eyebrow notranslate">Monorepos</div>
+          <p class="i18n"><span data-i18n-default>Scope a tree to just <code class="inline">dir="packages/ui"</code> — no noise from the rest of the workspace.</span><span data-locale="es" class="notranslate">Limita un árbol a solo <code class="inline">dir="packages/ui"</code> — sin ruido del resto del workspace.</span><span data-locale="it" class="notranslate">Limita un albero a solo <code class="inline">dir="packages/ui"</code> — senza rumore dal resto del workspace.</span></p>
+        </div>
+        <div class="carousel-card">
+          <div class="cc-eyebrow i18n"><span data-i18n-default>Course &amp; template repos</span><span data-locale="es" class="notranslate">Repos de cursos y plantillas</span><span data-locale="it" class="notranslate">Repo per corsi e template</span></div>
+          <p class="i18n"><span data-i18n-default>Students and forkers see the expected structure the moment they open the README.</span><span data-locale="es" class="notranslate">Estudiantes y quienes hacen fork ven la estructura esperada apenas abren el README.</span><span data-locale="it" class="notranslate">Studenti e chi fa fork vedono la struttura attesa non appena aprono il README.</span></p>
+        </div>
+        <div class="carousel-card">
+          <div class="cc-eyebrow i18n"><span data-i18n-default>Internal tooling</span><span data-locale="es" class="notranslate">Herramientas internas</span><span data-locale="it" class="notranslate">Strumenti interni</span></div>
+          <p class="i18n"><span data-i18n-default>Onboarding docs that don't quietly drift out of date after the next refactor.</span><span data-locale="es" class="notranslate">Documentación de onboarding que no queda desactualizada en silencio tras el próximo refactor.</span><span data-locale="it" class="notranslate">Documentazione di onboarding che non diventa obsoleta in silenzio dopo il prossimo refactor.</span></p>
+        </div>
+        <div class="carousel-card">
+          <div class="cc-eyebrow i18n"><span data-i18n-default>Dotfiles &amp; configs</span><span data-locale="es" class="notranslate">Dotfiles y configuraciones</span><span data-locale="it" class="notranslate">Dotfiles e configurazioni</span></div>
+          <p class="i18n"><span data-i18n-default>A tidy, always-current map of a config repo nobody else maintains.</span><span data-locale="es" class="notranslate">Un mapa ordenado y siempre actualizado de un repo de configuración que nadie más mantiene.</span><span data-locale="it" class="notranslate">Una mappa ordinata e sempre aggiornata di un repo di configurazione che nessun altro mantiene.</span></p>
+        </div>
+      </div>
+      <div class="carousel-nav">
+        <button type="button" class="carousel-btn" id="carousel-prev" aria-label="Scroll left">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12 15 19" pathLength="1"/></svg>
+        </button>
+        <button type="button" class="carousel-btn" id="carousel-next" aria-label="Scroll right">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 16 12 9 19" pathLength="1"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>Under the hood</span><span data-locale="es" class="notranslate">Por dentro</span><span data-locale="it" class="notranslate">Dietro le quinte</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>How it works</span><span data-locale="es" class="notranslate">Cómo funciona</span><span data-locale="it" class="notranslate">Come funziona</span></h2>
+    <p class="section-lead reveal i18n"><span data-i18n-default>On each run the action does four things — all idempotent, so it's safe to run on every push.</span><span data-locale="es" class="notranslate">En cada ejecución, la action hace cuatro cosas — todas idempotentes, por lo que es seguro ejecutarla en cada push.</span><span data-locale="it" class="notranslate">A ogni esecuzione, l'action fa quattro cose — tutte idempotenti, quindi è sicuro eseguirla a ogni push.</span></p>
+    <div class="steps">
+      <div class="step reveal" style="transition-delay:0s">
+        <div class="step-number">1</div>
+        <h3 class="i18n"><span data-i18n-default>Scan</span><span data-locale="es" class="notranslate">Escanear</span><span data-locale="it" class="notranslate">Scansiona</span></h3>
+        <p class="i18n"><span data-i18n-default>Walks the directory into a tree, honouring <code class="inline">.gitignore</code> and your excludes.</span><span data-locale="es" class="notranslate">Recorre el directorio y arma un árbol, respetando <code class="inline">.gitignore</code> y tus exclusiones.</span><span data-locale="it" class="notranslate">Percorre la directory costruendo un albero, rispettando <code class="inline">.gitignore</code> e le tue esclusioni.</span></p>
+      </div>
+      <div class="step reveal" style="transition-delay:.07s">
+        <div class="step-number">2</div>
+        <h3 class="i18n"><span data-i18n-default>Render</span><span data-locale="es" class="notranslate">Renderizar</span><span data-locale="it" class="notranslate">Renderizza</span></h3>
+        <p class="i18n"><span data-i18n-default>Draws it as ASCII, an SVG file, or nested <code class="inline">&lt;details&gt;</code> — with optional descriptions.</span><span data-locale="es" class="notranslate">Lo dibuja como ASCII, un archivo SVG, o <code class="inline">&lt;details&gt;</code> anidados — con descripciones opcionales.</span><span data-locale="it" class="notranslate">Lo disegna come ASCII, un file SVG, oppure <code class="inline">&lt;details&gt;</code> annidati — con descrizioni opzionali.</span></p>
+      </div>
+      <div class="step reveal" style="transition-delay:.14s">
+        <div class="step-number">3</div>
+        <h3 class="i18n"><span data-i18n-default>Splice</span><span data-locale="es" class="notranslate">Empalmar</span><span data-locale="it" class="notranslate">Innesta</span></h3>
+        <p class="i18n"><span data-i18n-default>Replaces the content between the <code class="inline">filetree</code> markers, leaving the rest of your file alone.</span><span data-locale="es" class="notranslate">Reemplaza el contenido entre los marcadores <code class="inline">filetree</code>, sin tocar el resto de tu archivo.</span><span data-locale="it" class="notranslate">Sostituisce il contenuto tra i marcatori <code class="inline">filetree</code>, lasciando intatto il resto del file.</span></p>
+      </div>
+      <div class="step reveal" style="transition-delay:.21s">
+        <div class="step-number">4</div>
+        <h3 class="notranslate">Commit</h3>
+        <p class="i18n"><span data-i18n-default>Pushes the updated README (and SVG) back to the branch — or fails a PR in <code class="inline">check</code> mode.</span><span data-locale="es" class="notranslate">Envía el README actualizado (y el SVG) de vuelta a la rama — o hace fallar un PR en modo <code class="inline">check</code>.</span><span data-locale="it" class="notranslate">Invia il README aggiornato (e l'SVG) al branch — oppure fa fallire una PR in modalità <code class="inline">check</code>.</span></p>
+      </div>
+    </div>
+    <div class="callout reveal i18n">
+      <span data-i18n-default><strong>Why an SVG <em>file</em>?</strong> GitHub strips inline <code class="inline">&lt;svg&gt;</code> from Markdown,
+      so the action writes a real <code class="inline">.svg</code> and embeds it as an image. That file carries its own
+      light/dark palette via <code class="inline">prefers-color-scheme</code> and a <code class="inline">viewBox</code>,
+      so GitHub renders it theme-aware and responsive for free.</span>
+      <span data-locale="es" class="notranslate"><strong>¿Por qué un <em>archivo</em> SVG?</strong> GitHub elimina el <code class="inline">&lt;svg&gt;</code> insertado en Markdown,
+      así que la action escribe un <code class="inline">.svg</code> real y lo incrusta como imagen. Ese archivo lleva su propia
+      paleta clara/oscura vía <code class="inline">prefers-color-scheme</code> y un <code class="inline">viewBox</code>,
+      así que GitHub lo renderiza adaptado al tema y responsivo, sin costo extra.</span>
+      <span data-locale="it" class="notranslate"><strong>Perché un <em>file</em> SVG?</strong> GitHub rimuove l'<code class="inline">&lt;svg&gt;</code> incorporato nel Markdown,
+      quindi l'action scrive un <code class="inline">.svg</code> reale e lo incorpora come immagine. Quel file porta con sé la propria
+      palette chiara/scura tramite <code class="inline">prefers-color-scheme</code> e un <code class="inline">viewBox</code>,
+      così GitHub lo renderizza adattato al tema e responsive, gratis.</span>
+    </div>
+  </div>
+</section>
+
+<section id="quick-start">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>Two steps</span><span data-locale="es" class="notranslate">Dos pasos</span><span data-locale="it" class="notranslate">Due passaggi</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>Quick start</span><span data-locale="es" class="notranslate">Inicio rápido</span><span data-locale="it" class="notranslate">Avvio rapido</span></h2>
+    <p class="section-lead reveal i18n"><span data-i18n-default>1 — Drop a placeholder anywhere in your <code class="inline">README.md</code>:</span><span data-locale="es" class="notranslate">1 — Coloca un marcador en cualquier parte de tu <code class="inline">README.md</code>:</span><span data-locale="it" class="notranslate">1 — Inserisci un segnaposto in qualsiasi punto del tuo <code class="inline">README.md</code>:</span></p>
+<pre class="notranslate">## Project structure
+
+[[files]]</pre>
+    <p class="section-lead reveal i18n" style="margin-top:24px"><span data-i18n-default>2 — Add a workflow at <code class="inline">.github/workflows/update-tree.yml</code>:</span><span data-locale="es" class="notranslate">2 — Agrega un workflow en <code class="inline">.github/workflows/update-tree.yml</code>:</span><span data-locale="it" class="notranslate">2 — Aggiungi un workflow in <code class="inline">.github/workflows/update-tree.yml</code>:</span></p>
+<pre class="notranslate">name: Update file tree
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write        # so the action can push the updated README
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lucianofedericopereira/treegen2@v1
+        with:
+          style: ascii    # ascii | svg | collapsible</pre>
+    <p class="section-lead reveal i18n" style="margin-top:24px">
+      <span data-i18n-default>That's it. The <code class="inline">[[files]]</code> token becomes a managed block that stays in sync forever.
+      Override options on any single marker:</span>
+      <span data-locale="es" class="notranslate">Eso es todo. El token <code class="inline">[[files]]</code> se convierte en un bloque gestionado que se mantiene sincronizado para siempre.
+      Puedes anular opciones en cualquier marcador individual:</span>
+      <span data-locale="it" class="notranslate">Tutto qui. Il token <code class="inline">[[files]]</code> diventa un blocco gestito che resta sincronizzato per sempre.
+      Puoi sovrascrivere le opzioni su qualsiasi singolo marcatore:</span>
+    </p>
+<pre class="notranslate">[[files dir="src" style="svg" max-depth="3" dirs-only="true"]]</pre>
+  </div>
+</section>
+
+<section id="options">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>Per-marker</span><span data-locale="es" class="notranslate">Por marcador</span><span data-locale="it" class="notranslate">Per marcatore</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>Options</span><span data-locale="es" class="notranslate">Opciones</span><span data-locale="it" class="notranslate">Opzioni</span></h2>
+    <p class="section-lead reveal i18n"><span data-i18n-default>The workflow sets defaults; any marker can override them inline. A few of the most useful:</span><span data-locale="es" class="notranslate">El workflow define valores predeterminados; cualquier marcador puede anularlos en línea. Algunos de los más útiles:</span><span data-locale="it" class="notranslate">Il workflow imposta i valori predefiniti; qualsiasi marcatore può sovrascriverli in linea. Alcuni tra i più utili:</span></p>
+    <div class="table-scroll reveal">
+      <table class="options-table">
+        <thead>
+          <tr><th class="i18n"><span data-i18n-default>Attribute</span><span data-locale="es" class="notranslate">Atributo</span><span data-locale="it" class="notranslate">Attributo</span></th><th class="i18n"><span data-i18n-default>Example</span><span data-locale="es" class="notranslate">Ejemplo</span><span data-locale="it" class="notranslate">Esempio</span></th><th class="i18n"><span data-i18n-default>Meaning</span><span data-locale="es" class="notranslate">Significado</span><span data-locale="it" class="notranslate">Significato</span></th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>dir</code></td><td data-label="Example"><code>dir="src"</code></td><td data-label="Meaning" class="i18n"><span data-i18n-default>Directory to scan (relative to repo root).</span><span data-locale="es" class="notranslate">Directorio a escanear (relativo a la raíz del repo).</span><span data-locale="it" class="notranslate">Directory da scansionare (relativa alla radice del repo).</span></td></tr>
+          <tr><td><code>style</code></td><td data-label="Example"><code>style="svg"</code></td><td data-label="Meaning" class="i18n"><span data-i18n-default><code>ascii</code>, <code>svg</code>, or <code>collapsible</code>.</span><span data-locale="es" class="notranslate"><code>ascii</code>, <code>svg</code>, o <code>collapsible</code>.</span><span data-locale="it" class="notranslate"><code>ascii</code>, <code>svg</code>, oppure <code>collapsible</code>.</span></td></tr>
+          <tr><td><code>max-depth</code></td><td data-label="Example"><code>max-depth="2"</code></td><td data-label="Meaning" class="i18n"><span data-i18n-default>Limit tree depth (<code>0</code> = unlimited).</span><span data-locale="es" class="notranslate">Limita la profundidad del árbol (<code>0</code> = sin límite).</span><span data-locale="it" class="notranslate">Limita la profondità dell'albero (<code>0</code> = illimitata).</span></td></tr>
+          <tr><td><code>dirs-only</code></td><td data-label="Example"><code>dirs-only="true"</code></td><td data-label="Meaning" class="i18n"><span data-i18n-default>Directories only, hide files.</span><span data-locale="es" class="notranslate">Solo directorios, oculta los archivos.</span><span data-locale="it" class="notranslate">Solo directory, nasconde i file.</span></td></tr>
+          <tr><td><code>exclude</code></td><td data-label="Example"><code>exclude="dist,*.tmp"</code></td><td data-label="Meaning" class="i18n"><span data-i18n-default>Extra ignore patterns (<code>.gitignore</code> syntax).</span><span data-locale="es" class="notranslate">Patrones de exclusión adicionales (sintaxis de <code>.gitignore</code>).</span><span data-locale="it" class="notranslate">Pattern di esclusione aggiuntivi (sintassi <code>.gitignore</code>).</span></td></tr>
+          <tr><td><code>descriptions</code></td><td data-label="Example"><code>desc="tree.json"</code></td><td data-label="Meaning" class="i18n"><span data-i18n-default>JSON file of <code>path → comment</code> notes.</span><span data-locale="es" class="notranslate">Archivo JSON de notas <code>ruta → comentario</code>.</span><span data-locale="it" class="notranslate">File JSON di note <code>percorso → commento</code>.</span></td></tr>
+          <tr><td><code>collapse</code></td><td data-label="Example"><code>collapse="true"</code></td><td data-label="Meaning" class="i18n"><span data-i18n-default>Wrap the block in one top-level <code>&lt;details&gt;</code>.</span><span data-locale="es" class="notranslate">Envuelve el bloque en un <code>&lt;details&gt;</code> de nivel superior.</span><span data-locale="it" class="notranslate">Racchiude il blocco in un <code>&lt;details&gt;</code> di primo livello.</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>Built to be dropped in</span><span data-locale="es" class="notranslate">Fácil de integrar</span><span data-locale="it" class="notranslate">Facile da integrare</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>Why treegen2</span><span data-locale="es" class="notranslate">Por qué treegen2</span><span data-locale="it" class="notranslate">Perché treegen2</span></h2>
+    <div class="features" style="margin-top:24px">
+      <div class="feature reveal">
+        <svg class="ic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 7.5 21 16.5 12 21 3 16.5 3 7.5Z" pathLength="1"/><path d="M3 7.5 12 12 21 7.5" pathLength="1"/><path d="M12 12 12 21" pathLength="1"/></svg>
+        <div><h3 class="i18n"><span data-i18n-default>Zero runtime deps</span><span data-locale="es" class="notranslate">Cero dependencias en tiempo de ejecución</span><span data-locale="it" class="notranslate">Zero dipendenze a runtime</span></h3><p class="i18n"><span data-i18n-default>Core Perl only — nothing to install, fast to run.</span><span data-locale="es" class="notranslate">Solo Perl núcleo — nada que instalar, rápido de ejecutar.</span><span data-locale="it" class="notranslate">Solo Perl core — niente da installare, veloce da eseguire.</span></p></div>
+      </div>
+      <div class="feature reveal">
+        <svg class="ic-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="6.5" pathLength="1"/><circle cx="15" cy="12" r="6.5" pathLength="1"/></svg>
+        <div><h3 class="i18n"><span data-i18n-default>Theme-matched SVG</span><span data-locale="es" class="notranslate">SVG adaptado al tema</span><span data-locale="it" class="notranslate">SVG adattato al tema</span></h3><p class="i18n"><span data-i18n-default>Folder icons and colours lifted from GitHub's Primer light &amp; dark tokens.</span><span data-locale="es" class="notranslate">Iconos de carpeta y colores tomados de los tokens claros y oscuros de Primer, de GitHub.</span><span data-locale="it" class="notranslate">Icone delle cartelle e colori ripresi dai token chiari e scuri di Primer, di GitHub.</span></p></div>
+      </div>
+      <div class="feature reveal">
+        <svg class="ic-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2" pathLength="1"/><path d="M11 18h2" pathLength="1"/></svg>
+        <div><h3 class="i18n"><span data-i18n-default>Responsive</span><span data-locale="es" class="notranslate">Responsivo</span><span data-locale="it" class="notranslate">Responsive</span></h3><p class="i18n"><span data-i18n-default>SVG ships a <code class="inline">viewBox</code> and scales to any width without distortion.</span><span data-locale="es" class="notranslate">El SVG incluye un <code class="inline">viewBox</code> y se adapta a cualquier ancho sin distorsión.</span><span data-locale="it" class="notranslate">L'SVG include un <code class="inline">viewBox</code> e si adatta a qualsiasi larghezza senza distorsioni.</span></p></div>
+      </div>
+      <div class="feature reveal">
+        <svg class="ic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11A8 8 0 1 0 18.5 16" pathLength="1"/><path d="M20 5v6h-6" pathLength="1"/></svg>
+        <div><h3 class="i18n"><span data-i18n-default>Idempotent</span><span data-locale="es" class="notranslate">Idempotente</span><span data-locale="it" class="notranslate">Idempotente</span></h3><p class="i18n"><span data-i18n-default>Re-runs cleanly; a <code class="inline">check</code> mode fails PRs when docs go stale.</span><span data-locale="es" class="notranslate">Se puede volver a ejecutar sin problemas; el modo <code class="inline">check</code> hace fallar los PR cuando la documentación queda desactualizada.</span><span data-locale="it" class="notranslate">Può essere rieseguito senza problemi; la modalità <code class="inline">check</code> fa fallire le PR quando la documentazione diventa obsoleta.</span></p></div>
+      </div>
+      <div class="feature reveal">
+        <svg class="ic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6 19 11C19 16 15.5 19.5 12 21 8.5 19.5 5 16 5 11L5 6Z" pathLength="1"/><path d="M9 12 11 14 15 9.5" pathLength="1"/></svg>
+        <div><h3 class="i18n"><span data-i18n-default>Fence-safe</span><span data-locale="es" class="notranslate">Seguro con bloques de código</span><span data-locale="it" class="notranslate">Sicuro con i blocchi di codice</span></h3><p class="i18n"><span data-i18n-default>Markers inside code blocks or <code class="inline">`inline code`</code> are left untouched.</span><span data-locale="es" class="notranslate">Los marcadores dentro de bloques de código o <code class="inline">`código en línea`</code> quedan intactos.</span><span data-locale="it" class="notranslate">I marcatori all'interno di blocchi di codice o <code class="inline">`codice inline`</code> restano intatti.</span></p></div>
+      </div>
+      <div class="feature reveal">
+        <svg class="ic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" pathLength="1"/><circle cx="12" cy="12" r="4" pathLength="1"/></svg>
+        <div><h3 class="i18n"><span data-i18n-default>Built to last</span><span data-locale="es" class="notranslate">Hecho para durar</span><span data-locale="it" class="notranslate">Fatto per durare</span></h3><p class="i18n"><span data-i18n-default>No syntax newer than <code class="inline">Perl 5.8</code> — CI runs the identical suite on Perl 5.8 through today, unmodified.</span><span data-locale="es" class="notranslate">Sin sintaxis más nueva que <code class="inline">Perl 5.8</code> — la CI ejecuta la misma suite en Perl 5.8 hasta hoy, sin modificaciones.</span><span data-locale="it" class="notranslate">Nessuna sintassi più recente di <code class="inline">Perl 5.8</code> — la CI esegue la stessa suite da Perl 5.8 a oggi, senza modifiche.</span></p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="eyebrow reveal i18n"><span data-i18n-default>Before you ask</span><span data-locale="es" class="notranslate">Antes de preguntar</span><span data-locale="it" class="notranslate">Prima di chiedere</span></div>
+    <h2 class="reveal i18n"><span data-i18n-default>FAQ</span><span data-locale="es" class="notranslate">Preguntas frecuentes</span><span data-locale="it" class="notranslate">Domande frequenti</span></h2>
+    <p class="section-lead reveal i18n"><span data-i18n-default>The short answers — every one of these is just the mechanics above, restated.</span><span data-locale="es" class="notranslate">Las respuestas breves — cada una de estas es simplemente la mecánica de arriba, explicada de nuevo.</span><span data-locale="it" class="notranslate">Le risposte brevi — ognuna di queste è semplicemente la meccanica descritta sopra, ripetuta.</span></p>
+
+    <div class="accordion reveal">
+      <div class="accordion-item">
+        <button type="button" class="accordion-trigger" aria-expanded="true" aria-controls="faq-1">
+          <span class="i18n"><span data-i18n-default>What happens to the rest of my README?</span><span data-locale="es" class="notranslate">¿Qué pasa con el resto de mi README?</span><span data-locale="it" class="notranslate">Cosa succede al resto del mio README?</span></span>
+          <span class="accordion-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="accordion-panel-wrap" id="faq-1">
+          <div class="accordion-panel-inner">
+            <p class="accordion-panel i18n"><span data-i18n-default>Nothing. treegen2 only replaces the content between the <code class="inline">[[files]]</code> marker's start/end comments — everything else in the file is left exactly as it was.</span><span data-locale="es" class="notranslate">Nada. treegen2 solo reemplaza el contenido entre los comentarios de inicio/fin del marcador <code class="inline">[[files]]</code> — todo lo demás en el archivo queda exactamente igual.</span><span data-locale="it" class="notranslate">Niente. treegen2 sostituisce solo il contenuto tra i commenti di inizio/fine del marcatore <code class="inline">[[files]]</code> — tutto il resto del file resta esattamente com'era.</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button type="button" class="accordion-trigger" aria-expanded="false" aria-controls="faq-2">
+          <span class="i18n"><span data-i18n-default>Will it touch markers inside code blocks?</span><span data-locale="es" class="notranslate">¿Modificará marcadores dentro de bloques de código?</span><span data-locale="it" class="notranslate">Modificherà i marcatori all'interno di blocchi di codice?</span></span>
+          <span class="accordion-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="accordion-panel-wrap" id="faq-2">
+          <div class="accordion-panel-inner">
+            <p class="accordion-panel i18n"><span data-i18n-default>No — fence-safe scanning skips markers inside code fences or <code class="inline">`inline code`</code>, so documentation <em>about</em> the marker syntax won't get rewritten.</span><span data-locale="es" class="notranslate">No — el escaneo seguro con bloques de código omite los marcadores dentro de fences de código o <code class="inline">`código en línea`</code>, así que la documentación <em>sobre</em> la sintaxis del marcador no se reescribirá.</span><span data-locale="it" class="notranslate">No — la scansione sicura con i blocchi di codice ignora i marcatori all'interno di fence di codice o <code class="inline">`codice inline`</code>, quindi la documentazione <em>sulla</em> sintassi del marcatore non verrà riscritta.</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button type="button" class="accordion-trigger" aria-expanded="false" aria-controls="faq-3">
+          <span class="i18n"><span data-i18n-default>What if nothing changed since the last run?</span><span data-locale="es" class="notranslate">¿Qué pasa si nada cambió desde la última ejecución?</span><span data-locale="it" class="notranslate">Cosa succede se non è cambiato nulla dall'ultima esecuzione?</span></span>
+          <span class="accordion-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="accordion-panel-wrap" id="faq-3">
+          <div class="accordion-panel-inner">
+            <p class="accordion-panel i18n"><span data-i18n-default>The action is idempotent — re-running it on an unchanged tree produces identical output, so there's no commit noise.</span><span data-locale="es" class="notranslate">La action es idempotente — volver a ejecutarla sobre un árbol sin cambios produce el mismo resultado, así que no genera ruido de commits.</span><span data-locale="it" class="notranslate">L'action è idempotente — rieseguirla su un albero invariato produce lo stesso output, quindi non genera rumore di commit.</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button type="button" class="accordion-trigger" aria-expanded="false" aria-controls="faq-4">
+          <span class="i18n"><span data-i18n-default>Can I fail a PR instead of auto-committing?</span><span data-locale="es" class="notranslate">¿Puedo hacer fallar un PR en lugar de confirmar automáticamente?</span><span data-locale="it" class="notranslate">Posso far fallire una PR invece di eseguire il commit automatico?</span></span>
+          <span class="accordion-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="accordion-panel-wrap" id="faq-4">
+          <div class="accordion-panel-inner">
+            <p class="accordion-panel i18n"><span data-i18n-default>Yes — set <code class="inline">check</code> mode and the action exits non-zero if the rendered tree doesn't match what's committed, so CI catches stale docs before merge.</span><span data-locale="es" class="notranslate">Sí — activa el modo <code class="inline">check</code> y la action termina con código distinto de cero si el árbol renderizado no coincide con lo confirmado, así CI detecta documentación desactualizada antes del merge.</span><span data-locale="it" class="notranslate">Sì — imposta la modalità <code class="inline">check</code> e l'action termina con codice diverso da zero se l'albero renderizzato non corrisponde a quanto committato, così la CI intercetta la documentazione obsoleta prima del merge.</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button type="button" class="accordion-trigger" aria-expanded="false" aria-controls="faq-5">
+          <span class="i18n"><span data-i18n-default>Why write a separate SVG file instead of embedding it inline?</span><span data-locale="es" class="notranslate">¿Por qué escribir un archivo SVG separado en vez de incrustarlo en línea?</span><span data-locale="it" class="notranslate">Perché scrivere un file SVG separato invece di incorporarlo in linea?</span></span>
+          <span class="accordion-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="accordion-panel-wrap" id="faq-5">
+          <div class="accordion-panel-inner">
+            <p class="accordion-panel i18n"><span data-i18n-default>GitHub strips inline <code class="inline">&lt;svg&gt;</code> from rendered Markdown, so treegen2 writes a real <code class="inline">.svg</code> file and embeds it as an image — which also means it gets <code class="inline">prefers-color-scheme</code> light/dark tokens and a scalable <code class="inline">viewBox</code> for free.</span><span data-locale="es" class="notranslate">GitHub elimina el <code class="inline">&lt;svg&gt;</code> en línea del Markdown renderizado, así que treegen2 escribe un archivo <code class="inline">.svg</code> real y lo incrusta como imagen — lo que además significa que obtiene tokens claros/oscuros de <code class="inline">prefers-color-scheme</code> y un <code class="inline">viewBox</code> escalable, sin costo extra.</span><span data-locale="it" class="notranslate">GitHub rimuove l'<code class="inline">&lt;svg&gt;</code> in linea dal Markdown renderizzato, quindi treegen2 scrive un file <code class="inline">.svg</code> reale e lo incorpora come immagine — il che significa anche che ottiene i token chiari/scuri di <code class="inline">prefers-color-scheme</code> e un <code class="inline">viewBox</code> scalabile, gratis.</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button type="button" class="accordion-trigger" aria-expanded="false" aria-controls="faq-6">
+          <span class="i18n"><span data-i18n-default>Can I use more than one marker in the same file?</span><span data-locale="es" class="notranslate">¿Puedo usar más de un marcador en el mismo archivo?</span><span data-locale="it" class="notranslate">Posso usare più di un marcatore nello stesso file?</span></span>
+          <span class="accordion-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="accordion-panel-wrap" id="faq-6">
+          <div class="accordion-panel-inner">
+            <p class="accordion-panel i18n"><span data-i18n-default>Yes — each <code class="inline">[[files ...]]</code> marker carries its own attributes (<code class="inline">dir</code>, <code class="inline">style</code>, <code class="inline">max-depth</code>, etc.), so you can render different trees for different folders in the same README.</span><span data-locale="es" class="notranslate">Sí — cada marcador <code class="inline">[[files ...]]</code> lleva sus propios atributos (<code class="inline">dir</code>, <code class="inline">style</code>, <code class="inline">max-depth</code>, etc.), así que puedes renderizar árboles distintos para carpetas distintas en el mismo README.</span><span data-locale="it" class="notranslate">Sì — ogni marcatore <code class="inline">[[files ...]]</code> porta i propri attributi (<code class="inline">dir</code>, <code class="inline">style</code>, <code class="inline">max-depth</code>, ecc.), quindi puoi renderizzare alberi diversi per cartelle diverse nello stesso README.</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+</div><!-- /.shell -->
+
+<footer class="reveal-footer">
+  <div class="wrap">
+    <p>
+      <a class="notranslate" href="https://github.com/lucianofedericopereira/treegen2">GitHub</a><span class="no-print"> ·</span>
+      <a class="i18n" href="docs.html"><span data-i18n-default>Docs</span><span data-locale="es" class="notranslate">Documentación</span><span data-locale="it" class="notranslate">Documentazione</span></a><span class="no-print"> ·</span>
+      <a class="i18n" href="changelog.html"><span data-i18n-default>Changelog</span><span data-locale="es" class="notranslate">Cambios</span><span data-locale="it" class="notranslate">Modifiche</span></a><span class="no-print"> ·</span>
+      <a class="notranslate" href="https://github.com/lucianofedericopereira/treegen2/blob/main/LICENSE">MIT License</a>
+    </p>
+    <p class="muted"><span class="no-print notranslate"><svg class="logo-tree logo-tree--sm" aria-hidden="true"><use href="#icon-tree"/></svg> treegen2 · by </span><a class="notranslate" href="https://github.com/lucianofedericopereira">Luciano Federico Pereira</a><span class="no-print notranslate"> · MIT</span></p>
+  </div>
+</footer>
+
+<!-- Fixed, bottom-right; JS toggles .is-visible once scrolled off the top
+     (site.js initBackToTop) — replaces the old inline "Back to top ↑"
+     footer link, which only existed at the very bottom of the page. -->
+<button type="button" class="back-to-top" id="back-to-top" aria-label="Back to top">
+  <svg aria-hidden="true"><use href="#icon-chevron-up"/></svg>
+</button>
+
+<script src="assets/site.js"></script>
+<script src="assets/locale.js"></script>
+</body>
+</html>

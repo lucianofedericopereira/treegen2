@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: "Native runner Perl (no setup step)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deliberately no "Set up Perl" step: this is the whole point.
+      # GitHub-hosted runners ship a system Perl; there is nothing to
+      # install, download, or pin.
+      - name: Show interpreter
+        run: perl -v
+
+      - name: Syntax-check every module
+        run: |
+          set -e
+          for f in $(find lib bin -type f \( -name '*.pm' -o -name 'treegen2' \)); do
+            echo "perl -c $f"
+            perl -Ilib -c "$f"
+          done
+
+      - name: Run test suite (prove)
+        run: prove -Ilib -r t
+
+  time-travel:
+    name: "Perl ${{ matrix.perl }} (unmodified source, ${{ matrix.year }})"
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # perl:5.8-buster's package is 5.8.9, the last 5.8 release —
+          # but 5.8 was the current stable series in 2006, ~20 years
+          # before this project's first commit. Same source, same tests,
+          # zero patches, all the way up to whatever "latest" is today.
+          - perl: "5.8"
+            year: "~2006"
+            image: "perl:5.8-buster"
+          - perl: "5.10"
+            year: "~2008"
+            image: "perl:5.10-buster"
+          - perl: "5.14"
+            year: "~2011"
+            image: "perl:5.14-buster"
+          - perl: "5.20"
+            year: "~2014"
+            image: "perl:5.20-buster"
+          - perl: "5.26"
+            year: "~2017"
+            image: "perl:5.26-buster"
+          - perl: "5.32"
+            year: "~2020"
+            image: "perl:5.32"
+          - perl: "5.36"
+            year: "~2022"
+            image: "perl:5.36"
+          - perl: "latest"
+            year: "today"
+            image: "perl:latest"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show interpreter
+        run: perl -v
+
+      - name: Run test suite (prove)
+        run: prove -Ilib -r t
+
+      - name: Exercise the CLI against the example fixture
+        run: |
+          set -e
+          printf '# Smoke\n\n[[files dir="examples/brand" style="ascii"]]\n' > /tmp/smoke.md
+          perl bin/treegen2 --readme /tmp/smoke.md --base .
+          grep -q 'brand-identity' /tmp/smoke.md
+
+  docs-fresh:
+    name: "README trees are current (dogfooding)"
+    runs-on: ubuntu-latest
+    needs: native
+    steps:
+      - uses: actions/checkout@v4
+      # Run this very action, from this very commit, against its own
+      # README, in check mode (never commits). If the tree in the README
+      # doesn't match the repo, this fails.
+      - name: Verify README trees are current
+        uses: ./
+        with:
+          readme: "README.md"
+          check: "true"
+          commit: "false"

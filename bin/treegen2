@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+# treegen2 — inject directory trees into README (or any Markdown/HTML) files.
+#
+# This wrapper only locates lib/ next to the script and hands off to
+# Treegen2::CLI; see lib/Treegen2/CLI.pm for the actual argument handling
+# and lib/Treegen2/ for the rest of the implementation.
+
+use FindBin ();
+use lib "$FindBin::RealBin/../lib";
+
+use Treegen2::CLI ();
+
+binmode(STDOUT, ':encoding(UTF-8)');
+binmode(STDERR, ':encoding(UTF-8)');
+
+exit(Treegen2::CLI::run(@ARGV));

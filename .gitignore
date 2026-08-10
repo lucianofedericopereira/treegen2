@@ -1,0 +1,19 @@
+# Perl
+*.bak
+blib/
+Makefile
+Makefile.old
+pm_to_blib
+*.tar.gz
+cover_db/
+nytprof.out
+nytprof/
+
+# Tooling caches
+.build/
+
+# OS
+.DS_Store
+
+# Claude Code session artifacts
+resume.txt
