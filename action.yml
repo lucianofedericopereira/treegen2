@@ -1,5 +1,5 @@
 name: "treegen2 — File Tree for README (Perl)"
-description: "Inject a directory tree into your README — ASCII, themeable SVG with folder icons, or collapsible. Pure Perl core, no interpreter setup step."
+description: "Inject a directory tree into your README — ASCII, themeable SVG, or collapsible. Pure Perl, no interpreter setup."
 author: "Luciano Federico Pereira"
 
 branding:
