@@ -1,4 +1,8 @@
-# 🌳 treegen2 — File Tree README Action, in Perl
+<img src="assets/treegen2.png" alt="Treegen2">
+    
+# 🌳 treegen2
+    
+## File Tree README Action, in Perl
 
 [![CI](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml/badge.svg)](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
