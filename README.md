@@ -4,12 +4,10 @@
 
 ## File Tree README Action, in Perl
 
-<a href='https://lucianofedericopereira.github.io/treegen2/' alt='read docs'>
-    <h2>
+<h2><a href='https://lucianofedericopereira.github.io/treegen2/' alt='read docs'>
         <img src='assets/info.svg' alt='read docs' width='28' height='28'>
         Read Docs
-    </h2>
-</a>
+</a></h2>
 
 [![CI](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml/badge.svg)](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
