@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 17;
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
 
@@ -49,5 +49,3 @@ my $md_body = glob_to_regex('**/*.md');
 my $md_re = qr/^$md_body$/;
 like('a/b/c.md', $md_re, '**/*.md matches a nested file via glob_to_regex');
 like('c.md', $md_re, '**/*.md also matches a top-level file');
-
-done_testing();

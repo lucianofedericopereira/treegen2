@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 24;
 use File::Temp qw(tempdir);
 use File::Path qw(mkpath);
 use FindBin ();
@@ -93,5 +93,3 @@ my $options = new_options();
 ok(has_markers(qq{[[files]]\n}), 'has_markers detects a placeholder token');
 ok(has_markers(qq{<!-- filetree:start -->\n<!-- filetree:end -->\n}), 'has_markers detects a marker block');
 ok(!has_markers(qq{Nothing to see here.\n}), 'has_markers is false when there is nothing to expand');
-
-done_testing();

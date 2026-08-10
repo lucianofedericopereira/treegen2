@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 15;
 use File::Temp qw(tempdir);
 use File::Path qw(mkpath);
 use FindBin ();
@@ -66,5 +66,3 @@ is($named_root->{name}, 'src', 'root node name is the directory basename when sc
 # --- error on a directory that does not exist -------------------------------
 eval { build_tree($dir, apply_attrs(new_options(), { dir => 'does-not-exist' })) };
 like($@, qr/not a directory/, 'scanning a missing directory dies with a clear message');
-
-done_testing();

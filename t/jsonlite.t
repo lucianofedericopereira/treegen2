@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 9;
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
 
@@ -52,5 +52,3 @@ is_deeply(
 
 eval { decode_json_lite('{not valid json') };
 like($@, qr/treegen2/, 'malformed JSON dies with a treegen2-prefixed error');
-
-done_testing();

@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 7;
 use File::Temp qw(tempdir);
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
@@ -34,5 +34,3 @@ print $bad_fh '["not", "an", "object"]';
 close $bad_fh;
 eval { load_descriptions('bad.json', $dir) };
 like($@, qr/treegen2/, 'a JSON array (not object) at the top level dies');
-
-done_testing();

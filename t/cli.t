@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 20;
 use File::Temp qw(tempdir);
 use File::Path qw(mkpath);
 use FindBin ();
@@ -112,5 +112,3 @@ sub run_cli {
     like($gh_content, qr/changed=true/, 'GITHUB_OUTPUT records changed=true');
     like($gh_content, qr/blocks=1/, 'GITHUB_OUTPUT records the block count');
 }
-
-done_testing();

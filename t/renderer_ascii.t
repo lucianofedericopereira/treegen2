@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 13;
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
 
@@ -47,5 +47,3 @@ my $unsafe_root = new_node(name => '.', path => '', is_dir => 1, children => [$u
 my $escaped = render_ascii_html($unsafe_root, $options);
 unlike($escaped, qr/<script>\.txt/, 'file names are HTML-escaped in the HTML renderer');
 like($escaped, qr/&lt;script&gt;\.txt/, 'escaped form is present');
-
-done_testing();

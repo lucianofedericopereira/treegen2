@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 17;
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
 
@@ -65,5 +65,3 @@ my $html_result = render_svg($root, $html_options, '/repo', '/repo/docs/index.ht
 like($html_result->{markdown}, qr/^<img class="filetree-svg"/, 'html format embeds an <img> tag');
 like($html_result->{markdown}, qr/src="\.\.\/assets\/filetree\.svg"/,
     'relative path climbs out of the docs/ subdirectory correctly');
-
-done_testing();

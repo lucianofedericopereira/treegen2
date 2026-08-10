@@ -6,12 +6,16 @@ use lib "$FindBin::RealBin/../lib";
 
 use Treegen2::Config qw(new_options apply_attrs parse_bool split_list STYLE_ASCII);
 
+my @truthy = qw(1 true True TRUE yes YES on Y y);
+my @falsy  = qw(0 false no off nope);
+plan tests => scalar(@truthy) + scalar(@falsy) + 19;
+
 # --- parse_bool ---------------------------------------------------------
-for my $truthy (qw(1 true True TRUE yes YES on Y y)) {
+for my $truthy (@truthy) {
     ok(parse_bool($truthy), "parse_bool('$truthy') is true");
 }
 ok(parse_bool(''), "parse_bool('') is true (bare attribute means present)");
-for my $falsy (qw(0 false no off nope)) {
+for my $falsy (@falsy) {
     ok(!parse_bool($falsy), "parse_bool('$falsy') is false");
 }
 
@@ -60,5 +64,3 @@ is_deeply($ignored, $base, 'unknown attribute keys are silently ignored');
 # a bare attribute (no "=value") means boolean true
 my $bare = apply_attrs($base, { collapse => 'true' });
 ok($bare->{collapse}, 'collapse=true sets the boolean field');
-
-done_testing();

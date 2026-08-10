@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 8;
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
 
@@ -39,5 +39,3 @@ is_deeply($inner_row->{ancestors_last}, [0], 'ancestors_last records that adir w
 
 my ($b_row) = grep { $_->{node}{name} eq 'b.txt' } @$rows;
 ok($b_row->{is_last}, 'b.txt is the last top-level entry');
-
-done_testing();

@@ -21,8 +21,8 @@ my @modules = qw(
     Treegen2::CLI
 );
 
+plan tests => scalar(@modules);
+
 for my $module (@modules) {
     require_ok($module);
 }
-
-done_testing();

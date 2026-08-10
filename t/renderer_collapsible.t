@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 10;
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
 
@@ -46,5 +46,3 @@ my $mixed_root = new_node(name => '.', path => '', is_dir => 1, children => [$d1
 my $mixed = render_collapsible($mixed_root, $options);
 my @ul_count = ($mixed =~ /<ul>/g);
 is(scalar(@ul_count), 1, 'files sorted after the one directory share a single <ul>');
-
-done_testing();

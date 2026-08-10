@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 8;
 use FindBin ();
 use lib "$FindBin::RealBin/../lib";
 
@@ -46,5 +46,3 @@ my $collapsible_root = build_tree($repo_root, $collapsible_options);
 my $collapsible_result = Treegen2::Renderer::render($collapsible_root, $collapsible_options, $ctx);
 like($collapsible_result->{markdown}, qr/<details open>/, 'collapsible style produces nested details');
 like($collapsible_result->{markdown}, qr/design-resources/, 'collapsible tree mentions each top-level directory');
-
-done_testing();

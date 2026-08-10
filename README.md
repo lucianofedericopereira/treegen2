@@ -439,16 +439,6 @@ repo root with a `name`, `description`, and `branding` (icon + colour).
 
 ---
 
-## 🗺️ What's not here yet
-
-This repository is the tool: the Perl implementation, its test suite, and
-the GitHub Action wrapping it. A project website and a standalone docs page
-(the equivalents of v1's `index.html` / `docs.html`) are deliberately not
-part of this drop — they're being designed separately and will land in a
-follow-up.
-
----
-
 ## 📄 License
 
 [MIT](LICENSE) © [Luciano Federico Pereira](https://github.com/lucianofedericopereira)
