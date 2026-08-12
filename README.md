@@ -9,16 +9,7 @@
         Read Docs
 </a></h2>
 
-[![CI](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml/badge.svg)](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml)
-<!--[[ badge: id=license label="License" message="MIT" color=DFB317 style=flat link="LICENSE" ]]-->
-<a href="LICENSE"><img src="assets/badges/license.svg" alt="License MIT"></a>
-<!--/-->
-<!--[[ badge: id=perl label="Perl" message="5.8+" color=39457E style=flat link="bin/treegen2" ]]-->
-<a href="bin/treegen2"><img src="assets/badges/perl.svg" alt="Perl 5.8+"></a>
-<!--/-->
-<!--[[ badge: id=dependencies label="CPAN dependencies" message="0" color=007EC6 style=flat link="lib/Treegen2" ]]-->
-<a href="lib/Treegen2"><img src="assets/badges/dependencies.svg" alt="CPAN dependencies 0"></a>
-<!--/-->
+[![CI](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml/badge.svg)](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml) <!--[[ badge: id=license label="License" message="MIT" color=DFB317 style=flat link="LICENSE" ]]--><a href="LICENSE"><img src="assets/badges/license.svg" alt="License MIT"></a><!--/--> <!--[[ badge: id=perl label="Perl" message="5.8+" color=39457E style=flat link="bin/treegen2" ]]--><a href="bin/treegen2"><img src="assets/badges/perl.svg" alt="Perl 5.8+"></a><!--/--> <!--[[ badge: id=dependencies label="CPAN dependencies" message="0" color=007EC6 style=flat link="lib/Treegen2" ]]--><a href="lib/Treegen2"><img src="assets/badges/dependencies.svg" alt="CPAN dependencies 0"></a><!--/-->
 
 Drop a `[[files]]` marker into any Markdown file and let this GitHub Action
 replace it with a directory tree. Choose the look:
