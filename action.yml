@@ -3,7 +3,7 @@ description: "Inject a directory tree into your README — ASCII, themeable SVG,
 author: "Luciano Federico Pereira"
 
 branding:
-  icon: "folder"
+  icon: "folder-plus"
   color: "green"
 
 inputs:
