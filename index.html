@@ -41,9 +41,8 @@ try {
 <meta name="theme-color" content="#14170f" media="(prefers-color-scheme: dark)" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B3%3C/text%3E%3C/svg%3E" />
 <link rel="stylesheet" href="assets/site.css" />
-<!-- Alternate palettes (ported from fui) — inert by default. Add
-     data-palette="name" to <html> above to pick one; see the file header
-     for the full list and how each is derived. -->
+<!-- Alternate palettes — inert by default. Add data-palette="name" to
+     <html> above to pick one; see the file header for the full list. -->
 <link rel="stylesheet" href="assets/palettes.css" />
 <link rel="stylesheet" href="assets/locale.css" />
 <!-- Cheap even if translate is never engaged — actual script load is lazy,
@@ -334,10 +333,7 @@ try {
      inside an ancestor with a real id — header#top, section#compare, etc.)
      and jumps straight to that ancestor's id, reusing the scroll-margin-top
      already set on `section` for the sticky nav instead of assigning each
-     heading a fresh one. Single-page scope on purpose — see
-     future-features.md's "Search widget (lunr.js)" entry for why a real
-     indexed/full-text search was deferred as overkill here; this needs no
-     index, no dependency, nothing to keep in sync. -->
+     heading a fresh one. No index, no dependency, nothing to keep in sync. -->
 <dialog class="search-modal" id="search-modal" aria-label="Search or jump to">
   <div class="search-input-wrap">
     <svg aria-hidden="true"><use href="#icon-search"/></svg>
