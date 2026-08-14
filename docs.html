@@ -330,7 +330,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: lucianofedericopereira/treegen2@v1
+      - uses: lucianofedericopereira/treegen2@v0.1
         with:
           style: ascii    # ascii | svg | collapsible</pre>
     <div class="callout reveal i18n">
@@ -590,7 +590,7 @@ jobs:
 
     <h3 class="i18n"><span data-i18n-default>Keep PRs honest</span><span data-locale="es" class="notranslate">Mantén los PR honestos</span><span data-locale="it" class="notranslate">Mantieni oneste le PR</span></h3>
     <p class="i18n"><span data-i18n-default>Fail a pull request when the README is stale instead of committing:</span><span data-locale="es" class="notranslate">Haz fallar un pull request cuando el README esté desactualizado en lugar de confirmar:</span><span data-locale="it" class="notranslate">Fai fallire una pull request quando il README è obsoleto invece di eseguire il commit:</span></p>
-<pre class="notranslate reveal">- uses: lucianofedericopereira/treegen2@v1
+<pre class="notranslate reveal">- uses: lucianofedericopereira/treegen2@v0.1
   with:
     check: "true"
     commit: "false"</pre>
@@ -604,13 +604,12 @@ jobs:
       <em>Settings → Pages → Deploy from a branch → <code class="inline">main</code> / <code class="inline">/ (root)</code></em>.</span></p>
 
     <h3 class="i18n"><span data-i18n-default>Marketplace</span><span data-locale="es" class="notranslate">Marketplace</span><span data-locale="it" class="notranslate">Marketplace</span></h3>
-    <p class="i18n"><span data-i18n-default>Push public, create a release tagged <code class="inline">v1.0.0</code>, tick
-      "Publish this Action to the Marketplace", then float a <code class="inline">v1</code> tag:</span>
-      <span data-locale="es" class="notranslate">Haz push público, crea un release etiquetado <code class="inline">v1.0.0</code>, marca
-      "Publish this Action to the Marketplace" y luego mueve una etiqueta flotante <code class="inline">v1</code>:</span>
-      <span data-locale="it" class="notranslate">Esegui push pubblico, crea una release taggata <code class="inline">v1.0.0</code>, spunta
-      "Publish this Action to the Marketplace", poi sposta un tag flottante <code class="inline">v1</code>:</span></p>
-<pre class="notranslate reveal">git tag -fa v1 -m "treegen2 v1" &amp;&amp; git push origin v1 --force</pre>
+    <p class="i18n"><span data-i18n-default>Push public, create a release tagged <code class="inline">v0.1</code>, tick
+      "Publish this Action to the Marketplace". Consumers pin directly to that tag — pre-1.0, each release is tagged and pinned directly rather than through a floating major-version alias.</span>
+      <span data-locale="es" class="notranslate">Haz push público, crea un release etiquetado <code class="inline">v0.1</code>, marca
+      "Publish this Action to the Marketplace". Quienes lo usan fijan la versión directamente a esa etiqueta — antes de 1.0, cada release se etiqueta y se fija directamente en lugar de usar un alias flotante de versión mayor.</span>
+      <span data-locale="it" class="notranslate">Esegui push pubblico, crea una release taggata <code class="inline">v0.1</code>, spunta
+      "Publish this Action to the Marketplace". Chi la usa fissa la versione direttamente a quel tag — prima della 1.0, ogni release viene taggata e fissata direttamente invece di usare un alias flottante di versione maggiore.</span></p>
   </div>
 </section>
 

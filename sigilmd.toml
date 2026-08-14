@@ -1,0 +1,4 @@
+[snippet]
+inline = ".sigilmd/pin.md"
+quickstart = ".sigilmd/quickstart.md"
+ci_usage = ".sigilmd/ci-usage.md"

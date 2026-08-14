@@ -1,13 +1,14 @@
-<img src="assets/treegen2.png" alt="Treegen2">
+<p align="center"><img src="assets/treegen2.png" alt="Treegen2" width="420"></p>
+
+<p align="center">
+<!--[[ badge: id=read-the-docs logo=github message="Read the Docs" color=24292F style=for-the-badge link="https://lucianofedericopereira.github.io/treegen2/" ]]-->
+<a href="https://lucianofedericopereira.github.io/treegen2/"><img src="assets/badges/read-the-docs.svg" alt="Read the Docs"></a>
+<!--/-->
+</p>
 
 # 🌳 treegen2
 
 ## File Tree README Action, in Perl
-
-<h2><a href='https://lucianofedericopereira.github.io/treegen2/' alt='read docs'>
-        <img src='assets/info.svg' alt='read docs' width='28' height='28'>
-        Read Docs
-</a></h2>
 
 [![CI](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml/badge.svg)](https://github.com/lucianofedericopereira/treegen2/actions/workflows/ci.yml) <!--[[ badge: id=license label="License" message="MIT" color=DFB317 style=flat link="LICENSE" ]]--><a href="LICENSE"><img src="assets/badges/license.svg" alt="License MIT"></a><!--/--> <!--[[ badge: id=perl label="Perl" message="5.8+" color=39457E style=flat link="bin/treegen2" ]]--><a href="bin/treegen2"><img src="assets/badges/perl.svg" alt="Perl 5.8+"></a><!--/--> <!--[[ badge: id=dependencies label="CPAN dependencies" message="0" color=007EC6 style=flat link="lib/Treegen2" ]]--><a href="lib/Treegen2"><img src="assets/badges/dependencies.svg" alt="CPAN dependencies 0"></a><!--/-->
 
@@ -189,6 +190,7 @@ by this very action. Edit the folders, push, and they update themselves.
 
 **2. Add a workflow** at `.github/workflows/update-tree.yml`:
 
+<!--[[ @$snippet.quickstart ]]-->
 ```yaml
 name: Update file tree
 on:
@@ -201,10 +203,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: lucianofedericopereira/treegen2@v1
+      - uses: lucianofedericopereira/treegen2@v0.1
         with:
           style: ascii    # ascii | svg | collapsible
 ```
+<!--/-->
 
 On the next push the `[[files]]` token is expanded into a managed block that
 is kept in sync on every run:
@@ -292,8 +295,7 @@ hand-written JSON parser, not a CPAN module — see [Why Perl](#why-perl-and-why
 
 ## ⚙️ Action inputs
 
-Every input has a sensible default; the smallest useful config is just
-`uses: lucianofedericopereira/treegen2@v1`.
+Every input has a sensible default; the smallest useful config is just <!--[[ @$snippet.inline ]]-->`uses: lucianofedericopereira/treegen2@v0.1`<!--/-->.
 
 | Input                | Default                                        | Description                                        |
 | --------------------- | ----------------------------------------------- | --------------------------------------------------- |
@@ -330,12 +332,14 @@ There's no interpreter to pin — see [Why Perl](#why-perl-and-why-this-exists).
 
 Fail a pull request when the README is stale instead of committing:
 
+<!--[[ @$snippet.ci_usage ]]-->
 ```yaml
-- uses: lucianofedericopereira/treegen2@v1
+- uses: lucianofedericopereira/treegen2@v0.1
   with:
     check: "true"
     commit: "false"
 ```
+<!--/-->
 
 ---
 
@@ -430,15 +434,14 @@ The action is Marketplace-ready: [`action.yml`](action.yml) lives at the
 repo root with a `name`, `description`, and `branding` (icon + colour).
 
 1. Push the repo **public**.
-2. Create a release — tag it `v1.0.0`. On the release page, tick **"Publish
+2. Create a release — tag it `v0.1`. On the release page, tick **"Publish
    this Action to the GitHub Marketplace"**, accept the agreement, and
    choose categories (e.g. _Utilities_, _Continuous integration_).
-3. Move a floating **`v1`** tag to the release so consumers can pin
-   `uses: lucianofedericopereira/treegen2@v1`:
 
-   ```bash
-   git tag -fa v1 -m "treegen2 v1" && git push origin v1 --force
-   ```
+Consumers then pin directly to that tag: <!--[[ @$snippet.inline ]]-->`uses: lucianofedericopereira/treegen2@v0.1`<!--/-->.
+Pre-1.0, each release is tagged and pinned directly rather than through a
+floating major-version alias — worth adopting once this reaches a stable
+`v1`.
 
 > Marketplace requires the action **`name`** to be unique across all
 > listings. If the current name in `action.yml` is taken, tweak it.
